@@ -22,3 +22,18 @@ make build
 # Run all tests
 make test
 ```
+
+## Test cases
+
+The aforementioned validation **MUST COVER** at least the following cases:
+
+  1. Integers: operations with integers that yield exact results
+  2. Representation error: decimals without a finite binary representation (0.1, 0.2, 0.3, 0.6, 0.7)
+  3. Large numbers: values close to 1e15–1e308, which may cause overflow to +Inf
+  4. Catastrophic cancellation: sums of nearly equal values with opposite signs (e.g., 1e-15 + (-1e-15)) multiplied by a large factor
+  5. Negative zero: -0.0 + 0.0 to verify normalization of -0.0
+  6. Subnormals: the value 5e-324 (smallest positive representable double)
+  7. Identity: (x + 0) * 1 = x to verify preservation
+  8. Mixed signs: combinations of positive and negative numbers
+
+Do not use NaN or Infinity as inputs (only as possible results). Test cases should be sorted from least to most difficult.
