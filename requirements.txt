@@ -1,0 +1,6 @@
+pytest
+pytest-bdd
+playwright
+pytest-playwright
+hypothesis
+mutmut  # dev
