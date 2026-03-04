@@ -20,5 +20,8 @@ unit-test: build
 integration-test: build
 	cd tests && python3 -m pytest integration . -v
 
+bdd-test: build
+	cd tests && python3 -m pytest bdd -v
+
 clean:
 	rm -f $(BIN) $(OUT_PY) $(OUT_CPP)
