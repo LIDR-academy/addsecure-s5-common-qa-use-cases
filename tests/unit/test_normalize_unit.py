@@ -1,13 +1,11 @@
 """Unit tests for tools.compare.normalize — explicit cases for the normalization contract."""
 
-import math
-
 import pytest
 
 from tools.compare import normalize
 
 
-# 1) 0.1 + 0.2 normalizado a 16 decimales
+# 1) apply rounding to 16 decimal places
 def test_float_addition_rounding():
     # In Python, 0.1 + 0.2 == 0.30000000000000004
     # After normalization to 16 decimals: "0.3000000000000000"
