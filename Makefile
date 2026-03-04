@@ -23,5 +23,14 @@ integration-test: build
 bdd-test: build
 	cd tests && python3 -m pytest bdd -v
 
+mutate:
+	OBJC_DISABLE_INITIALIZE_FORK_SAFETY=YES mutmut run
+
+mutate-html:
+	python3 tools/mutmut_html_report.py
+
+mutate-clean:
+	rm -rf mutants/ .mutmut-cache
+
 clean:
 	rm -f $(BIN) $(OUT_PY) $(OUT_CPP)
