@@ -28,7 +28,7 @@ pip install -r requirements.txt
 make build
 
 # Run all tests
-make test
+pytest
 ```
 
 ## Test cases
