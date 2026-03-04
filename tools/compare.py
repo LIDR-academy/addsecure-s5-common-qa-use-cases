@@ -19,8 +19,46 @@ from decimal import Decimal, ROUND_HALF_EVEN, InvalidOperation, localcontext
 
 def normalize(value):
     """Normalize a raw value to a canonical string for comparison."""
-    # TODO implement this function properly
-    return str(value)
+    # Handle float NaN / Inf directly
+    if isinstance(value, float):
+        if math.isnan(value):
+            return "NaN"
+        if math.isinf(value):
+            return "+Inf" if value > 0 else "-Inf"
+
+    s = str(value).strip()
+
+    # Handle string-encoded special values (case-insensitive)
+    lower = s.lower()
+    if lower == "nan":
+        return "NaN"
+    if lower in ("+inf", "inf", "infinity", "+infinity"):
+        return "+Inf"
+    if lower in ("-inf", "-infinity"):
+        return "-Inf"
+
+    # Parse to Decimal
+    try:
+        d = Decimal(s)
+    except InvalidOperation:
+        return f"UNPARSABLE:{value}"
+
+    if d.is_nan():
+        return "NaN"
+    if d.is_infinite():
+        return "+Inf" if d > 0 else "-Inf"
+
+    # Quantize to 16 decimal places with banker's rounding
+    quantize_exp = Decimal("1." + "0" * 16)
+    with localcontext() as ctx:
+        ctx.prec = 50
+        d = d.quantize(quantize_exp, rounding=ROUND_HALF_EVEN)
+
+    # Normalize -0 to 0 (after quantize, so small negatives that round to zero are caught)
+    if d == 0:
+        d = Decimal("0").quantize(quantize_exp)
+
+    return format(d, 'f')
 
 
 def load_jsonl(path):

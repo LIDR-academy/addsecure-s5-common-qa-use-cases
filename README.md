@@ -28,13 +28,13 @@ pip install -r requirements.txt
 make build
 
 # Run all tests
-pytest
+make test
 
 # Run unit tests
-pytest tests/unit
+make unit-test
 
 # Run integration tests
-pytest tests/integration
+make integration-test
 ```
 
 ## Normalization contract
