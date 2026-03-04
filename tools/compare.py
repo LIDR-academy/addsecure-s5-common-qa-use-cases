@@ -1,33 +1,24 @@
 #!/usr/bin/env python3
-"""Naïve compare: out_py.jsonl vs out_cpp.jsonl WITHOUT normalization.
+"""Compare out_py.jsonl vs out_cpp.jsonl using normalized values.
 
-Strict comparison:
-  - If both values are numbers: fail if (py != cpp) or str(py) != str(cpp)
-  - If case_id is missing in either file: fail
-  - Compares raw JSON values as-is (no rounding, no canonical forms)
+Normalization contract v1:
+  - NaN  -> "NaN"
+  - +Inf -> "+Inf",  -Inf -> "-Inf"
+  - -0.0 -> "0.0000000000000000"
+  - Numbers: Decimal with 16 decimal places, ROUND_HALF_EVEN
 
 Exit code 0 if all cases match, 1 if any differ.
 """
 
+import argparse
 import json
 import math
 import sys
-from decimal import Context, Decimal, ROUND_HALF_EVEN, InvalidOperation
-
-_Q16 = Decimal("1E-16")
-_CTX = Context(prec=40, rounding=ROUND_HALF_EVEN)
-_SPECIAL_STRINGS = {
-    "nan": "NaN",
-    "inf": "+Inf",
-    "+inf": "+Inf",
-    "-inf": "-Inf",
-    "infinity": "+Inf",
-    "+infinity": "+Inf",
-    "-infinity": "-Inf",
-}
+from decimal import Decimal, ROUND_HALF_EVEN, InvalidOperation, localcontext
 
 
 def normalize(value):
+    """Normalize a raw value to a canonical string for comparison."""
     # TODO implement this function properly
     return str(value)
 
@@ -59,33 +50,39 @@ def load_jsonl(path):
     return records
 
 
-def main():
-    if len(sys.argv) != 3:
-        print(f"Usage: {sys.argv[0]} <out_py.jsonl> <out_cpp.jsonl>", file=sys.stderr)
-        sys.exit(1)
-
-    py_path = sys.argv[1]
-    cpp_path = sys.argv[2]
-
-    py_data = load_jsonl(py_path)
-    cpp_data = load_jsonl(cpp_path)
-
-    all_ids = sorted(set(py_data.keys()) | set(cpp_data.keys()))
-    total = len(all_ids)
-
-    if total == 0:
-        print("No cases found.")
-        sys.exit(0)
-
+def compare_naive(py_data, cpp_data, all_ids):
+    """Compare raw values strictly (no normalization)."""
     failures = []
     for cid in all_ids:
         if cid not in py_data:
-            norm_cpp = normalize(cpp_data[cid])
-            failures.append((cid, "<MISSING>", str(cpp_data[cid]), "<MISSING>", norm_cpp))
+            failures.append((cid, "<MISSING>", str(cpp_data[cid])))
             continue
         if cid not in cpp_data:
-            norm_py = normalize(py_data[cid])
-            failures.append((cid, str(py_data[cid]), "<MISSING>", norm_py, "<MISSING>"))
+            failures.append((cid, str(py_data[cid]), "<MISSING>"))
+            continue
+
+        raw_py = py_data[cid]
+        raw_cpp = cpp_data[cid]
+
+        both_numeric = isinstance(raw_py, (int, float)) and isinstance(raw_cpp, (int, float))
+        if both_numeric:
+            if raw_py != raw_cpp or str(raw_py) != str(raw_cpp):
+                failures.append((cid, str(raw_py), str(raw_cpp)))
+        else:
+            if str(raw_py) != str(raw_cpp):
+                failures.append((cid, str(raw_py), str(raw_cpp)))
+    return failures
+
+
+def compare_contract(py_data, cpp_data, all_ids):
+    """Compare using normalized values (contract v1)."""
+    failures = []
+    for cid in all_ids:
+        if cid not in py_data:
+            failures.append((cid, "<MISSING>", str(cpp_data[cid]), "<MISSING>", normalize(cpp_data[cid])))
+            continue
+        if cid not in cpp_data:
+            failures.append((cid, str(py_data[cid]), "<MISSING>", normalize(py_data[cid]), "<MISSING>"))
             continue
 
         raw_py = py_data[cid]
@@ -95,8 +92,13 @@ def main():
 
         if norm_py != norm_cpp:
             failures.append((cid, str(raw_py), str(raw_cpp), norm_py, norm_cpp))
+    return failures
 
+
+def print_report(failures, total, mode):
+    """Print summary and top 10 differences."""
     passed = total - len(failures)
+    print(f"Mode        : {mode}")
     print(f"Total cases : {total}")
     print(f"Passed      : {passed}")
     print(f"Failures    : {len(failures)}")
@@ -104,14 +106,52 @@ def main():
     if failures:
         n = min(10, len(failures))
         print(f"\nTop {n} differences:")
-        print(f"  {'case_id':<10} {'raw_py':>28} {'raw_cpp':>28} {'norm_py':>28} {'norm_cpp':>28}")
-        print(f"  {'-'*10} {'-'*28} {'-'*28} {'-'*28} {'-'*28}")
-        for cid, raw_py, raw_cpp, norm_py, norm_cpp in failures[:n]:
-            print(f"  {cid:<10} {raw_py:>28} {raw_cpp:>28} {norm_py:>28} {norm_cpp:>28}")
+        if mode == "naive":
+            print(f"  {'case_id':<10} {'raw_py':>28} {'raw_cpp':>28}")
+            print(f"  {'-'*10} {'-'*28} {'-'*28}")
+            for cid, raw_py, raw_cpp in failures[:n]:
+                print(f"  {cid:<10} {raw_py:>28} {raw_cpp:>28}")
+        else:
+            print(f"  {'case_id':<10} {'raw_py':>24} {'raw_cpp':>24} {'norm_py':>22} {'norm_cpp':>22}")
+            print(f"  {'-'*10} {'-'*24} {'-'*24} {'-'*22} {'-'*22}")
+            for cid, raw_py, raw_cpp, norm_py, norm_cpp in failures[:n]:
+                print(f"  {cid:<10} {raw_py:>24} {raw_cpp:>24} {norm_py:>22} {norm_cpp:>22}")
         sys.exit(1)
     else:
         print("\nAll cases match.")
         sys.exit(0)
+
+
+def main():
+    parser = argparse.ArgumentParser(
+        description="Compare out_py.jsonl vs out_cpp.jsonl"
+    )
+    parser.add_argument("py_jsonl", help="Path to Python output JSONL")
+    parser.add_argument("cpp_jsonl", help="Path to C++ output JSONL")
+    parser.add_argument(
+        "--mode",
+        choices=["naive", "contract"],
+        default="contract",
+        help="Comparison mode: naive (raw strict) or contract (normalized, default)",
+    )
+    args = parser.parse_args()
+
+    py_data = load_jsonl(args.py_jsonl)
+    cpp_data = load_jsonl(args.cpp_jsonl)
+
+    all_ids = sorted(set(py_data.keys()) | set(cpp_data.keys()))
+    total = len(all_ids)
+
+    if total == 0:
+        print("No cases found.")
+        sys.exit(0)
+
+    if args.mode == "naive":
+        failures = compare_naive(py_data, cpp_data, all_ids)
+    else:
+        failures = compare_contract(py_data, cpp_data, all_ids)
+
+    print_report(failures, total, args.mode)
 
 
 if __name__ == "__main__":
