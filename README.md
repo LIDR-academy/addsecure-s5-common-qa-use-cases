@@ -29,6 +29,12 @@ make build
 
 # Run all tests
 pytest
+
+# Run unit tests
+pytest tests/unit
+
+# Run integration tests
+pytest tests/integration
 ```
 
 ## Test cases
