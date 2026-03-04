@@ -6,7 +6,14 @@ Python and C++ represent floating point numbers differently. E.g.: the number '-
 
 ## This repo
 
-Implements a numeric equivalence validator between Python and C++ implementations of the formula `value = (a + b) * c` using IEEE 754 double-precision.
+Implements a numeric equivalence validator between Python and C++ implementations of the formula `value = (a + b) * c` using IEEE 754 double-precision with 16 decimal places. When rounding is necessary, it uses ROUND_HALF_EVEN by default. 
+
+## Examples
+
+| a | b | c | expected value |
+| 1 | 2 | 3 | 9.0000000000000000 |
+| 0.1 | 0.2 | 10 | 3.0000000000000000 |
+| -1.5 | 2.5 | -3.0 | -3.0000000000000000 |
 
 ## Quick Start
 
