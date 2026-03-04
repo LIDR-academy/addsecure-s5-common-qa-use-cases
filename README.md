@@ -11,6 +11,7 @@ Implements a numeric equivalence validator between Python and C++ implementation
 ## Examples
 
 | a | b | c | expected value |
+| --- | --- | --- | --- |
 | 1 | 2 | 3 | 9.0000000000000000 |
 | 0.1 | 0.2 | 10 | 3.0000000000000000 |
 | -1.5 | 2.5 | -3.0 | -3.0000000000000000 |
