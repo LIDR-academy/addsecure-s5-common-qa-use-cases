@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Requirements Change Report — 16 → 12 Decimal Places</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+    body { font-family: system-ui, sans-serif; margin: 2rem; background: #f5f5f5; color: #222; }
+    h1 { margin-bottom: .25rem; }
+    .subtitle { color: #666; margin-bottom: 1.5rem; font-size: .9rem; }
+    .summary-box {
+      background: #fff; border-radius: 8px; padding: 1.25rem 1.5rem;
+      box-shadow: 0 1px 3px rgba(0,0,0,.1); margin-bottom: 2rem;
+      border-left: 4px solid #3b82f6;
+    }
+    .summary-box p { margin: .4rem 0; }
+    .cards { display: flex; gap: 1rem; flex-wrap: wrap; margin-bottom: 2rem; }
+    .card {
+      padding: 1rem 1.5rem; border-radius: 8px; background: #fff;
+      box-shadow: 0 1px 3px rgba(0,0,0,.1); min-width: 130px; text-align: center;
+    }
+    .card .count { font-size: 2rem; font-weight: bold; }
+    .card .label { font-size: .8rem; color: #555; margin-top: .25rem; }
+    .card.high   .count { color: #c0392b; }
+    .card.medium .count { color: #e67e22; }
+    .card.low    .count { color: #1a9c34; }
+    .card.total  .count { color: #3b82f6; }
+    table {
+      width: 100%; border-collapse: collapse; background: #fff;
+      box-shadow: 0 1px 3px rgba(0,0,0,.1); border-radius: 8px; overflow: hidden;
+    }
+    th {
+      text-align: left; padding: .75rem 1rem; background: #333; color: #fff;
+      font-size: .85rem;
+    }
+    td { padding: .65rem 1rem; border-bottom: 1px solid #eee; font-size: .85rem; vertical-align: top; }
+    tr:last-child td { border-bottom: none; }
+    tr:hover { background: #f9f9f9; }
+    .badge {
+      display: inline-block; padding: .2rem .6rem; border-radius: 4px;
+      font-size: .78rem; font-weight: bold; white-space: nowrap;
+    }
+    .badge.high   { background: #fde8e8; color: #c0392b; }
+    .badge.medium { background: #fef3e2; color: #d35400; }
+    .badge.low    { background: #eafaf1; color: #1a9c34; }
+    .file { font-family: monospace; font-size: .83rem; font-weight: bold; }
+    ul { margin: .3rem 0 0 1.1rem; padding: 0; }
+    li { margin-bottom: .25rem; }
+    code { background: #f0f0f0; padding: .1rem .3rem; border-radius: 3px; font-size: .82rem; }
+    .section-title { font-size: 1.15rem; font-weight: bold; margin: 2rem 0 .75rem; color: #333; }
+  </style>
+</head>
+<body>
+
+  <h1>Requirements Change Report</h1>
+  <div class="subtitle">Change: IEEE 754 precision from <strong>16 decimal places</strong> to <strong>12 decimal places</strong></div>
+
+  <div class="summary-box">
+    <p><strong>Context:</strong> This repository implements a numeric equivalence validator between Python and C++ for the formula <code>value = (a + b) * c</code>. The normalization contract currently mandates exactly 16 decimal places with <code>ROUND_HALF_EVEN</code>. The proposed change reduces precision to 12 decimal places.</p>
+    <p><strong>Scope:</strong> The change affects the core normalization logic, its documentation, all unit/BDD/mutation tests that assert on the exact output format, and every hardcoded expected value string containing 16 decimal digits.</p>
+    <p><strong>Key risk:</strong> Several rounding boundary tests (e.g. <code>5e-17</code>, <code>2.5e-16</code>) were chosen specifically because they sit at the half-way point of 1e-16. At 12 decimal places the half-way points shift to 1e-12, so those test inputs must be redesigned.</p>
+  </div>
+
+  <div class="cards">
+    <div class="card total"><div class="count">8</div><div class="label">Files affected</div></div>
+    <div class="card high">  <div class="count">2</div><div class="label">High complexity</div></div>
+    <div class="card medium"><div class="count">3</div><div class="label">Medium complexity</div></div>
+    <div class="card low">   <div class="count">3</div><div class="label">Low complexity</div></div>
+  </div>
+
+  <div class="section-title">Affected Files</div>
+
+  <table>
+    <thead>
+      <tr>
+        <th style="width:28%">File</th>
+        <th style="width:10%">Complexity</th>
+        <th>Required Changes</th>
+      </tr>
+    </thead>
+    <tbody>
+
+      <!-- tools/compare.py -->
+      <tr>
+        <td class="file">tools/compare.py</td>
+        <td><span class="badge low">Low</span></td>
+        <td>
+          This is the single source-of-truth for the normalization contract.
+          <ul>
+            <li>Change <code>"0" * 16</code> to <code>"0" * 12</code> in the <code>quantize_exp</code> expression (line&nbsp;52).</li>
+            <li>Update the module docstring and inline comment that reference 16 decimal places / <code>"0.0000000000000000"</code> (lines&nbsp;7–8, 51).</li>
+          </ul>
+          This is a small, isolated, mechanical change with no logic risk.
+        </td>
+      </tr>
+
+      <!-- README.md -->
+      <tr>
+        <td class="file">README.md</td>
+        <td><span class="badge low">Low</span></td>
+        <td>
+          Documentation must reflect the new precision throughout.
+          <ul>
+            <li>Line&nbsp;9: update the project description (<code>16 decimal places</code> → <code>12 decimal places</code>).</li>
+            <li>Line&nbsp;51: update <code>1e-16</code> → <code>1e-12</code>.</li>
+            <li>Line&nbsp;52: update <code>16 decimal places</code> → <code>12 decimal places</code>.</li>
+            <li>Line&nbsp;53: update the negative-zero example value to <code>"0.000000000000"</code>.</li>
+            <li>Lines&nbsp;15–17: update the three example expected-value strings in the table to 12 decimal digits (e.g. <code>9.000000000000</code>).</li>
+          </ul>
+          Purely textual; no logic changes.
+        </td>
+      </tr>
+
+      <!-- features/sync_contract.feature -->
+      <tr>
+        <td class="file">features/sync_contract.feature</td>
+        <td><span class="badge low">Low</span></td>
+        <td>
+          The <code>Background</code> step reads verbatim.
+          <ul>
+            <li>Update the <code>Given</code> background step text from <code>"… with 16 decimal places …"</code> to <code>"… with 12 decimal places …"</code>.</li>
+            <li>The matching step definition in <code>tests/bdd/test_sync_contract_bdd.py</code> must be updated in lockstep (see below).</li>
+          </ul>
+          One line change; low risk as long as the BDD step definition is updated together.
+        </td>
+      </tr>
+
+      <!-- tests/bdd/test_sync_contract_bdd.py -->
+      <tr>
+        <td class="file">tests/bdd/test_sync_contract_bdd.py</td>
+        <td><span class="badge medium">Medium</span></td>
+        <td>
+          The step definition string is coupled to the feature file's <code>Background</code> wording.
+          <ul>
+            <li>Update the <code>@given(…)</code> step registration string to match the new 12-decimal-places wording (line&nbsp;66).</li>
+            <li>Rerun the full BDD suite after updating both the feature file and this file to confirm no binding errors.</li>
+          </ul>
+          Medium complexity because a mismatch between the feature text and the step definition causes a hard test-collection failure, and the change must be coordinated across two files simultaneously.
+        </td>
+      </tr>
+
+      <!-- tests/unit/test_normalize.py -->
+      <tr>
+        <td class="file">tests/unit/test_normalize.py</td>
+        <td><span class="badge medium">Medium</span></td>
+        <td>
+          Contains hardcoded expected output strings and precision-related comments.
+          <ul>
+            <li>Update all expected output strings from 16 to 12 decimal digits (e.g. <code>"0.3000000000000000"</code> → <code>"0.300000000000"</code>).</li>
+            <li>Update the comment on line&nbsp;8 (<code>rounding to 16 decimal places</code>).</li>
+            <li>Re-evaluate any test inputs that were chosen because they exercise 16th-place rounding — they may need to be redesigned for 12-place rounding boundaries.</li>
+          </ul>
+        </td>
+      </tr>
+
+      <!-- tests/unit/test_properties.py -->
+      <tr>
+        <td class="file">tests/unit/test_properties.py</td>
+        <td><span class="badge medium">Medium</span></td>
+        <td>
+          Three property-based tests reference the 16-decimal-place invariant directly.
+          <ul>
+            <li><strong>Format test</strong>: change the assertion <code>len(decimal_part) == 16</code> to <code>== 12</code> (line&nbsp;63) and update the docstring.</li>
+            <li><strong>Stability-of-zero test</strong>: the expected sentinel <code>"0.0000000000000000"</code> on line&nbsp;79 must become <code>"0.000000000000"</code>.</li>
+            <li>Re-verify that the <code>floats(min_value=-1e-300, max_value=1e-300, …)</code> strategy still targets meaningful near-zero rounding at 12 places (it does — it is safely within the new quantize range).</li>
+          </ul>
+        </td>
+      </tr>
+
+      <!-- tests/unit/test_normalize_mutation.py -->
+      <tr>
+        <td class="file">tests/unit/test_normalize_mutation.py</td>
+        <td><span class="badge high">High</span></td>
+        <td>
+          This is the most labour-intensive file. It contains ~30 hardcoded 16-decimal expected values
+          across multiple parametrized groups, <em>plus</em> test inputs that are mathematically tied
+          to the 1e-16 quantization boundary.
+          <ul>
+            <li><strong>All expected value strings</strong> must be updated to 12 decimal digits (e.g. <code>"1.0000000000000000"</code> → <code>"1.000000000000"</code>).</li>
+            <li><strong>Rounding boundary inputs</strong> — <code>5e-17</code> and <code>2.5e-16</code> — sit at the exact half-way point of 1e-16 and will no longer be at a rounding boundary for 1e-12. New inputs must be identified: <code>5e-13</code> (half of 1e-12, rounds to even 0) and <code>2.5e-12</code> (rounds to even 2) are the direct equivalents.</li>
+            <li><strong>Module docstring</strong> and all inline comments that mention <code>16</code>, <code>1e-16</code>, <code>"0" * 16</code>, and 16-digit strings must be updated to their 12-place equivalents.</li>
+            <li>The <em>idempotency</em> parametrized list (lines 202–210) contains several 16-digit strings that must be replaced.</li>
+            <li>After editing, re-run <code>make mutate-clean &amp;&amp; make mutate</code> because the mutation targets (<code>16 → 17</code>) shift to <code>12 → 13</code>.</li>
+          </ul>
+        </td>
+      </tr>
+
+      <!-- docs/mutation_testing.md -->
+      <tr>
+        <td class="file">docs/mutation_testing.md</td>
+        <td><span class="badge high">High</span></td>
+        <td>
+          This document explains the mutation testing strategy in terms of the current 16-decimal contract
+          and contains examples, tables, and worked diffs that are all precision-specific.
+          <ul>
+            <li>Line&nbsp;17: update the mutation example <code>"0" * 16</code> → <code>"0" * 17</code> to the 12-place equivalent (<code>"0" * 12</code> → <code>"0" * 13</code>).</li>
+            <li>The "Boundary conditions" guidance section (lines 170–177) names <code>5e-17</code> and <code>2.5e-16</code> as canonical half-way rounding inputs — these must be replaced with <code>5e-13</code> and <code>2.5e-12</code>.</li>
+            <li>All prose references to "16 decimal places", <code>1e-16</code>, and 16-digit example strings must be updated to 12.</li>
+            <li>The "Equivalent mutants" section (line&nbsp;184) references <code>value &gt; 0</code> → <code>value &gt;= 0</code>; this remains valid and does not need to change, but surrounding context strings do.</li>
+            <li>High complexity because this is explanatory documentation: simply find-replacing numbers is insufficient — the narrative rationale for each boundary test must be re-derived for the new precision and rewritten for accuracy.</li>
+          </ul>
+        </td>
+      </tr>
+
+    </tbody>
+  </table>
+
+  <div class="section-title">Files Confirmed NOT Affected</div>
+  <table>
+    <thead>
+      <tr>
+        <th>File</th>
+        <th>Reason</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td class="file">py/run_py.py</td>
+        <td>Outputs raw computed values only; normalization is handled entirely by <code>tools/compare.py</code>.</td>
+      </tr>
+      <tr>
+        <td class="file">cpp/main.cpp</td>
+        <td>Outputs raw <code>double</code> values via <code>printf</code>; no decimal formatting or precision specification in source.</td>
+      </tr>
+      <tr>
+        <td class="file">inputs.jsonl</td>
+        <td>Contains input triplets <code>(a, b, c)</code> only; precision is irrelevant to test inputs.</td>
+      </tr>
+      <tr>
+        <td class="file">tests/integration/test_compare.py</td>
+        <td>Runs end-to-end pipeline comparisons; does not assert on the number of decimal places directly.</td>
+      </tr>
+      <tr>
+        <td class="file">setup.cfg</td>
+        <td>Contains only mutmut path configuration; no precision references.</td>
+      </tr>
+      <tr>
+        <td class="file">Makefile</td>
+        <td>Contains build and test commands only; no precision references.</td>
+      </tr>
+      <tr>
+        <td class="file">pytest.ini</td>
+        <td>Test discovery configuration only; no precision references.</td>
+      </tr>
+      <tr>
+        <td class="file">tools/mutmut_html_report.py</td>
+        <td>Reads mutmut metadata and generates HTML; no precision references.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <p style="margin-top:2rem; color:#888; font-size:.8rem;">
+    Report generated: 2026-03-04 &nbsp;|&nbsp; Change scope: 16 → 12 decimal places
+  </p>
+
+</body>
+</html>
