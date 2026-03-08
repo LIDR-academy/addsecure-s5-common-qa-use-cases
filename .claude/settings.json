@@ -1,0 +1,37 @@
+{
+  "defaultMode": "acceptEdits",
+  "permissions": {
+    "allow": [
+      "Bash(python -m pytest *)",
+      "Bash(pytest *)",
+      "Bash(ctest *)",
+      "Bash(git status)",
+      "Bash(git diff *)",
+      "Bash(git checkout *)",
+      "Bash(git restore *)",
+      "Bash(git reset --hard *)",
+      "Bash(mkdir -p *)",
+      "Bash(ls *)",
+      "Bash(cat *)",
+      "Bash(sed *)",
+      "Bash(bash scripts/syncguard_run.sh *)",
+      "Bash(make unit-test)",
+      "Bash(make integration-test)",
+      "Bash(make bdd-test)",
+      "Bash(make test)",
+      "Bash(make build)"
+    ],
+    "deny": [
+      "Bash(git push *)",
+      "Bash(git commit *)",
+      "Bash(rm -rf *)",
+      "Bash(sudo *)",
+      "Bash(curl *)",
+      "Bash(wget *)",
+      "Bash(docker *)",
+      "Read(./.env)",
+      "Read(./.env.*)",
+      "Read(./secrets/**)"
+    ]
+  }
+}
